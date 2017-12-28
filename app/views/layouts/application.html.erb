@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>libroute</title>
+
+    <%= stylesheet_link_tag    'application', 'data-turbolinks-track': 'reload'  %>
+    <%= javascript_include_tag 'application', 'data-turbolinks-track': 'reload' %>
+    
+    <%= yield :turbolinksnocache %>
+    <%= csrf_meta_tags %>
+  </head>
+  <body>
+
+  <%= render 'layouts/nav'  %>
+
+  <%= render 'layouts/flash' %>
+
+  <% if params['controller'].eql?('home') && params['action'].eql?('index') %>
+    <%= yield %>
+  <% else %>
+   <div class="container" style="margin-top: 40px;">
+     <%= yield %>
+   </div>
+  <% end %>
+
+  <div class="container">
+    <hr>
+    <footer>
+      <p class="text-center text-muted">libroute v0.1 &copy; XS Research Ltd <%= Time.now.year %></p>
+    </footer>
+  </div>
+
+  </body>
+</html>
+

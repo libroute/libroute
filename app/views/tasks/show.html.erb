@@ -1,0 +1,26 @@
+
+<p>
+<strong>Actions: </strong> <%= render 'links' %>
+</p>
+
+<p>
+  <strong>Status:</strong>
+  <%= @task.status %>
+</p>
+
+<h4>Files</h4>
+<% Blob.where(task_id: @task.id).each do |b| %>
+  <p>
+    <% def linkurl(action,b)
+        return request.protocol + request.host + ":8080/#{action}/#{@task.id}/#{b.uid}"
+       end %>
+    <%= link_to(b.name, linkurl('view',b), :target => '_blank') %>
+    <%= link_to('(download)', linkurl('download',b)) %>
+    </p>
+<% end %>
+
+<p>
+  <strong>Input:</strong>
+  <pre><%= @task.input %></pre>
+</p>
+

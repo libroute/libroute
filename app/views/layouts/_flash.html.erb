@@ -1,0 +1,5 @@
+<% flash.each do |name, msg| -%>
+<% c = name.eql?('notice') ? 'success' : 'danger' %>
+  <div class="container alert alert-<%= c %>" style="margin-top: 40px;"><%= msg %></div>
+<% end %>
+

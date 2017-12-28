@@ -1,0 +1,13 @@
+# Read about fixtures at http://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  name: MyString
+  uid: MyString
+  run: one
+  filesize: 1
+
+two:
+  name: MyString
+  uid: MyString
+  run: two
+  filesize: 1

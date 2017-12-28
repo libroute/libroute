@@ -1,0 +1,50 @@
+<h2>Documentation <small class="text-muted">- libroute v0.1</small></h2><br>
+
+<p>Libroute allow you to build and run scientific and engineering applications using open source software components by specifying and linking components.</p><br>
+<h4>Use cases</h4>
+<p>The main use cases for Libroute are in the following fields:</p>
+<ul>
+<li>Data generation</li>
+<li>Modelling & Simulation</li>
+<li>Machine learning</li>
+<li>Performance evaluation</li>
+</ul>
+<h4>Process</h4>
+<p>Libroute allows you to specify workflows and run tasks as follows:</p>
+<ol>
+<li>From the tasks page, select New Task</li>
+<li>Enter the input definition for the task (or use the example from the <%= link_to 'Getting Started', '/getting-started' %> page)</li>
+<li>Select Launch to begin running</li>
+<li>When complete, select Show to view the output results</li>
+<li>Click on any of the files under the Files section</li>
+</ol>
+<h4>Input</h4>
+<p>The input definition file consists of the following sections<p>
+<ul>
+<li>version</li>
+This field must be set to 0.1 for this version of the definition file
+<li>images</li>
+An array of images with each entry a hashmap with the following fields:
+  <ul>
+  <li><b>name</b> - User-defined name for the image used to reference it within the input definition file</li>
+  <li><b>source</b> - Where to retrieve the repository (github|local)</li>
+  <li><b>user</b> - Username (if github specified)</li>
+  <li><b>repo</b> - Repository name (if github specified)</li>
+  <li><b>dir</b> - Directory where the repository is located (if local specified)</li>
+  </ul>
+<li>preload</li>
+An hashmap of filenames and contents where the file contents is provided as an array of strings, with each array item representing one line in the text file.
+<li>activities</li>
+An array of hash maps with the following fields:
+  <ul>
+    <li><b>image</b> - the name of the image as specificed in the images section</li>
+    <li><b>inputs</b> - a hashmap of input files, mapping input filename to container container filename</li>
+    <li><b>outputs</b> - a hashmap of output files, mapping docker container filename to output filename</li>
+    <li><b>cmd</b> (optional) - an array of the command arguments</li>
+  </ul>
+</ul>
+
+<h3>Examples</h3>
+<p>Below is an example template which can be loaded in by launching from the <%= link_to 'Getting Started', '/getting-started' %> page</p>
+<pre><%= File.read('examples/spiral-classification.json') %></pre>
+

@@ -1,0 +1,6 @@
+.git
+output/*
+repos/*
+log/*
+sqlite/*
+tmp/*

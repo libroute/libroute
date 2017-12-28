@@ -1,0 +1,27 @@
+<h1>Tasks</h1>
+
+<%= link_to 'New Task', new_task_path %>
+<br><br>
+<table class="table">
+  <thead>
+    <tr>
+      <th>Created</th>
+      <th>Status</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% @tasks.each do |task| %>
+<% @task = task %>
+      <tr>
+        <td><%= task.created_at %> (<%= time_ago_in_words(task.created_at) %> ago)</td>
+        <td><%= task.status %></td>
+        <td><%= render 'links' %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<br>
+

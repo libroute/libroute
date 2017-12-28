@@ -1,0 +1,34 @@
+{ "version" : 0.1,
+  "images" : [
+  {   "name" : "spiral_dataset",
+      "source" : "github",   
+      "user" : "libroute",   
+      "repo" : "spiral_dataset",   
+      "ref" : "master" },
+  {   "name" : "python-classification",
+      "source" : "local",
+      "dir" : "python-classification",
+      "ref" : "master" }
+  ],
+ "preload" : [
+   { "params.txt" : [ "n_truth=3" ] }
+  ],
+ "activities" : [
+   { "image" : "spiral_dataset",
+     "inputs" : {},
+     "outputs" : {"/home/docker/spiral.csv":"train.csv"} },
+   { "image" : "spiral_dataset",
+     "inputs" : {},
+     "outputs" : {"/home/docker/test.csv":"test.csv"},
+     "cmd" : ["Rscript","gentestdata.r"]},
+   { "image" : "python-classification",
+     "inputs" : {"train.csv" : "/home/user/data/train.csv",
+                 "params.txt":"/home/user/data/params.txt",
+                 "test.csv" : "/home/user/data/test.csv"},
+     "outputs" : { "/home/user/data/test_output.csv" : "test_output.csv"} },
+   { "image" : "spiral_dataset",
+     "inputs" : {"train.csv":"/home/docker/spiral.csv","test_output.csv":"/home/docker/test_output.csv"},
+     "outputs" : {"/home/docker/plot.png":"plot.png"},
+     "cmd" : ["Rscript","plot.r"] }
+  ]
+}

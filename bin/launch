@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+if [ ! -f ./sqlite/development.sqlite3 ]; then
+    rake db:setup
+fi
+exec rails server -b 0.0.0.0
