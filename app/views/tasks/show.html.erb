@@ -9,14 +9,18 @@
 </p>
 
 <h4>Files</h4>
-<% Blob.where(task_id: @task.id).each do |b| %>
-  <p>
+<% @blob_groups.each do |bg| %>
+<h5><%= bg[0] %></h5>
+<% blobs = bg[1] %>
+  <% blobs.each do |b| %>
+  <p style="text-indent: 1em;">
     <% def linkurl(action,b)
         return request.protocol + request.host + ":8080/#{action}/#{@task.id}/#{b.uid}"
        end %>
     <%= link_to(b.name, linkurl('view',b), :target => '_blank') %>
     <%= link_to('(download)', linkurl('download',b)) %>
     </p>
+  <% end %>
 <% end %>
 
 <p>

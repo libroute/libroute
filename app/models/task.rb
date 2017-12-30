@@ -93,7 +93,7 @@ class Task < ApplicationRecord
       end
 
       image = nil
-      Blob.store(self.id, "log.#{im['name']}.build.txt") do |io|
+      Blob.store(self.id, "log/#{im['name']}.build.txt") do |io|
         logfn = Proc.new do |v|
           if (log = JSON.parse(v)) && log.has_key?("stream")
             io.write(log["stream"])
@@ -144,7 +144,7 @@ class Task < ApplicationRecord
 
       # Run
       puts "Starting #{image['name']}"
-      Blob.store(self.id, "log.#{image['name']}.txt") do |io|
+      Blob.store(self.id, "log/#{image['name']}.txt") do |io|
         c.tap(&:start).attach(:stream => true, :stdin => nil, :stdout => true, :stderr => true, :logs => true, :tty => false) do |stream, chunk|
           io.write(chunk)
           puts "#{chunk}"

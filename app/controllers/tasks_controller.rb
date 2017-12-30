@@ -10,6 +10,11 @@ class TasksController < ApplicationController
   # GET /tasks/1
   # GET /tasks/1.json
   def show
+    blobs = @task.blobs
+    # array of [blob,dirname]
+    v = blobs.map{|b| [b,b.name]}.map{|a| a[1].include?('/') ? [a[0],a[1].split('/')[0]] : [a[0],'']}
+    dirs = v.map{|x| x[1]}.uniq.sort
+    @blob_groups = dirs.map{|d| [d,v.select{|vv| vv[1].eql?(d)}.map{|v| v[0]}]}
   end
 
   # GET /tasks/new
