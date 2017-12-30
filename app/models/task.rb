@@ -82,27 +82,27 @@ class Task < ApplicationRecord
 
     # Build containers
     data['images'].map! do |im|
-      #Docker::Image.build_from_tar(File.open(fname, 'r'), {'dockerfile' => im['dockerfile']}) do |v|
-      #  if (log = JSON.parse(v)) && log.has_key?("stream")
-      #    $stdout.puts log["stream"]
-      #  end
-      #end
-      # https://github.com/libroute/python-classification.git
-      logfn = Proc.new do |v|
-        if (log = JSON.parse(v)) && log.has_key?("stream")
-          $stdout.puts log["stream"]
-        end
-      end
-
       if im['source'].eql?('github')
         url = "https://github.com/#{im['user']}/#{im['repo']}.git"
-        image = Docker::Image.build_from_tar(StringIO.new, {'remote'=>url}, &logfn)
+        buildfn = Proc.new{|logfn| Docker::Image.build_from_tar(StringIO.new, {'remote'=>url}, &logfn)}
       elsif im['source'].eql?('local')
         localdir = Rails.root + 'repos' + im['dir']
-        image = Docker::Image.build_from_dir(localdir.to_s, &logfn)
+        buildfn = Proc.new{|logfn| Docker::Image.build_from_dir(localdir.to_s, &logfn)}
       else
         return "Invalid source"
       end
+
+      image = nil
+      Blob.store(self.id, "log.#{im['name']}.build.txt") do |io|
+        logfn = Proc.new do |v|
+          if (log = JSON.parse(v)) && log.has_key?("stream")
+            io.write(log["stream"])
+            puts log["stream"]
+          end
+        end
+        image = buildfn.call(logfn)
+      end
+
       im['id'] = image.id
       im
     end
@@ -129,9 +129,9 @@ class Task < ApplicationRecord
       # Create container
       puts "Creating #{image['name']}"
       if act['cmd'].nil?
-	c = Docker::Container.create('Image'=>id)
+	c = Docker::Container.create('Image'=>id, 'Tty'=>false)
       else
-	c = Docker::Container.create('Image'=>id, 'Cmd'=>act['cmd'])
+	c = Docker::Container.create('Image'=>id, 'Tty'=>false, 'Cmd'=>act['cmd'])
       end
 
       # Send inputs
@@ -140,17 +140,16 @@ class Task < ApplicationRecord
         Blob.retrieve(self.id, k) do |io,size|
           Dockerio.store_file(c, v, io, size)
         end
-	#fn = Rails.root + 'output' + self.id.to_s + k
-	#fsize = File.size(fn)
-	#File.open(fn, 'rb') do |io|
-	#  Dockerio.store_file(c, v, io, fsize)
-	#end
       end
 
       # Run
       puts "Starting #{image['name']}"
-      puts "STDOUT:"
-      c.tap(&:start).attach{ |stream, chunk| print "#{chunk}" }
+      Blob.store(self.id, "log.#{image['name']}.txt") do |io|
+        c.tap(&:start).attach(:stream => true, :stdin => nil, :stdout => true, :stderr => true, :logs => true, :tty => false) do |stream, chunk|
+          io.write(chunk)
+          puts "#{chunk}"
+        end
+      end
 
       # Retrieve outputs
       puts "Retrieving outputs from #{image['name']}"
@@ -159,10 +158,6 @@ class Task < ApplicationRecord
         Blob.store(self.id,v) do |io|
           Dockerio.retrieve_file_advanced(c, k, io)
         end
-	#fn = Rails.root + 'output' + self.id.to_s + v
-	#File.open(fn, 'wb') do |f|
-	#  Dockerio.retrieve_file_advanced(c, k, f)
-	#end
       end
 
       # Cleanup
