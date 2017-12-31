@@ -88,6 +88,8 @@ class Task < ApplicationRecord
       elsif im['source'].eql?('local')
         localdir = Rails.root + 'repos' + im['dir']
         buildfn = Proc.new{|logfn| Docker::Image.build_from_dir(localdir.to_s, &logfn)}
+      elsif im['source'].eql?('dockerfile')
+        buildfn = Proc.new{|logfn| Docker::Image.build(im['contents'].join("\n"), &logfn)}
       else
         return "Invalid source"
       end
