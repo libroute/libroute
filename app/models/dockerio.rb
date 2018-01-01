@@ -32,10 +32,13 @@ class Dockerio
     r,w = IO.pipe('ASCII-8BIT')
     w.set_encoding('ASCII-8BIT')
     Thread.new do
-      c.archive_out(k) do |chunk|
-        w.write chunk
+      begin
+        c.archive_out(k) do |chunk|
+          w.write chunk
+        end
+      ensure
+        w.close
       end
-      w.close
     end
 
     # Patch IO read object

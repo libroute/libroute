@@ -59,7 +59,11 @@ class Task < ApplicationRecord
   def run
  
     # Retrieve task info
-    data = JSON.parse(self.input)
+    begin
+      data = JSON.parse(self.input)
+    rescue
+      return "Error parsing JSON input definition"
+    end
 
     # Check version
     if Task.version_ok?(data['version']) == false
@@ -122,15 +126,16 @@ class Task < ApplicationRecord
       end
     end
 
-
     # Run containers
     data['activities'].each do |act|
+
       # Find image
       puts data['images'].to_s
       puts act['image'].to_s
 
       image = data['images'].select{|im| im['name'].eql?(act['image'])}.first
       id = image['id']
+
       # Create container
       puts "Creating #{image['name']}"
       if act['cmd'].nil?
@@ -140,10 +145,12 @@ class Task < ApplicationRecord
       end
 
       # Send inputs
-      act['inputs'].each do |k,v|
-	puts "#{k}:#{v}"
-        Blob.retrieve(self.id, k) do |io,size|
-          Dockerio.store_file(c, v, io, size)
+      if !act['inputs'].nil?
+        act['inputs'].each do |k,v|
+          puts "#{k}:#{v}"
+          Blob.retrieve(self.id, k) do |io,size|
+            Dockerio.store_file(c, v, io, size)
+          end
         end
       end
 
@@ -180,10 +187,12 @@ class Task < ApplicationRecord
 
       # Retrieve outputs
       puts "Retrieving outputs from #{image['name']}"
-      act['outputs'].each do |k,v|
-	puts "#{k}:#{v}"
-        Blob.store(self.id,v) do |io|
-          Dockerio.retrieve_file_advanced(c, k, io)
+      if !act['outputs'].nil?
+        act['outputs'].each do |k,v|
+        puts "#{k}:#{v}"
+          Blob.store(self.id,v) do |io|
+            Dockerio.retrieve_file_advanced(c, k, io)
+          end
         end
       end
 
