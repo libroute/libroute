@@ -144,14 +144,36 @@ class Task < ApplicationRecord
         end
       end
 
-      # Run
+      # Setup run thread
       puts "Starting #{image['name']}"
-      Blob.store(self.id, "log/#{image['name']}.txt") do |io|
-        c.tap(&:start).attach(:stream => true, :stdin => nil, :stdout => true, :stderr => true, :logs => true, :tty => false) do |stream, chunk|
-          io.write(chunk)
-          puts "#{chunk}"
+      t1 = Thread.new do
+        Blob.store(self.id, "log/#{image['name']}.txt") do |io|
+           c.tap(&:start).attach(:stream => true, :stdin => nil, :stdout => true, :stderr => true, :logs => true, :tty => false) do |stream, chunk|
+            io.write(chunk)
+            puts "#{chunk}"
+          end
         end
       end
+
+      # Setup monitor thread
+      t2 = Thread.new do
+        while true
+          state = Docker::Container.all(all: true, filters: { id: [c.id] }.to_json).first.info['State'].eql?('exited')
+          if state == true
+            puts "Detected container exit... waiting"
+            sleep 1
+            puts "Force complete"
+            t1.kill
+            Thread.exit
+          end
+        end
+      end
+
+      # Wait until run thread complete
+      t1.join
+
+      # Ensure monitor is killed
+      t2.kill
 
       # Retrieve outputs
       puts "Retrieving outputs from #{image['name']}"

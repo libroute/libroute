@@ -29,10 +29,10 @@ class Blob < ApplicationRecord
     b.uid = b.uid + ext if allow_ext
     b.name = name
     b.task_id = taskid
+    b.save
     File.open(d + b.uid, 'wb') do |f|
       yield(f)
     end
-    b.save
   end
 
   def self.erase(taskid)
