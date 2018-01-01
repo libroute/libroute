@@ -22,15 +22,16 @@
 <p>The input definition file consists of the following sections<p>
 <ul>
 <li>version</li>
-This field must be set to 0.1 for this version of the definition file
+This field must be set to 0.1.1 for this version of the definition file
 <li>images</li>
 An array of images with each entry a hashmap with the following fields:
   <ul>
   <li><b>name</b> - User-defined name for the image used to reference it within the input definition file</li>
-  <li><b>source</b> - Where to retrieve the repository (github|local)</li>
+  <li><b>source</b> - Where to retrieve the repository (github|local|dockerfile)</li>
   <li><b>user</b> - Username (if github specified)</li>
   <li><b>repo</b> - Repository name (if github specified)</li>
   <li><b>dir</b> - Directory where the repository is located (if local specified)</li>
+  <li><b>dockerfile</b> - Array of strings, each containing a line of a dockerfile</li>
   </ul>
 <li>preload</li>
 An hashmap of filenames and contents where the file contents is provided as an array of strings, with each array item representing one line in the text file.

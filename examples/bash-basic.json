@@ -1,4 +1,4 @@
-{ "version" : 0.1,
+{ "version" : "0.1.1",
   "images" : [
   {   "name" : "bash-basic-example",
       "source" : "dockerfile",

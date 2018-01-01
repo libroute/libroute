@@ -18,11 +18,14 @@ class Task < ApplicationRecord
         self.status = :success
       else
         self.status = :error
-        puts "Error: #{result}"
+        Blob.store(self.id, "log/error.txt") do |io|
+          puts "#{result}"
+          io.write "#{result}"
+        end
       end
     rescue Exception => e
       self.status = :failed
-      puts "FAILED! Error was:"
+      puts "FAILED"
       puts e.message
       puts e.backtrace.inspect
     ensure
@@ -59,8 +62,8 @@ class Task < ApplicationRecord
     data = JSON.parse(self.input)
 
     # Check version
-    if data['version'] != 0.1
-      return "Only version 0.1 input files are supported"
+    if Task.version_ok?(data['version']) == false
+      return "This version of input definition is not supported"
     end
 
     puts "Found #{data['images'].length} images"
@@ -196,5 +199,24 @@ class Task < ApplicationRecord
 
   def erase_data
     Blob.erase(self.id)
+  end
+
+  def self.version_ok?(v)
+    v_app_full = Rails.application.config.libroute_version
+    v_app = v_app_full[1..-1].split('-')[0]
+    Task.version_check(v.to_s, v_app)
+   end
+
+   def self.version_check(v, s) # v is given version, s is supported version
+    v = v.split('.').map{|x| x.to_i}
+    s = s.split('.').map{|x| x.to_i}
+    (0..2).each do |ind|
+      v_i = v[ind] || 0
+      s_i = s[ind] || 0
+      puts "comparing #{v_i} to #{s_i}"
+      if v_i > s_i then return false end
+      if v_i < s_i then return true end
+    end
+    return true
   end
 end
