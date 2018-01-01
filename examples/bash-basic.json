@@ -1,0 +1,16 @@
+{ "version" : 0.1,
+  "images" : [
+  {   "name" : "bash-basic-example",
+      "source" : "dockerfile",
+      "contents" : ["FROM centos:7"] }
+  ],
+ "preload" : [
+ {  "script.sh" : [ "echo \"Hello libroute!\"" ] }
+  ],
+ "activities" : [
+   { "image" : "bash-basic-example",
+     "inputs" : {"script.sh" : "/script.sh"},
+     "outputs" : { },
+    "cmd" : ["bash","-c","/script.sh"] }
+  ]
+}

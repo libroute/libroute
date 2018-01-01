@@ -1,0 +1,17 @@
+<div class="container">
+  <hr>
+  <h3>Example - <small class="text-muted">Running a bash script</small></h3>
+  <br><h5>Run a bash script to perform basic operations</h5>
+  <br><p>This example introduces libroute concepts using a basic example of executing simple bash commands. It is defined as follows:</p>
+  <ul>
+  <li>Use the Centos 7 operating system image</li>
+  <li>Create a script which prints out 'Hello libroute!'</li>
+  <li>Run the script using 'bash -c' which executes a shell and runs the command which follows, in this case the script</li>
+  </ul>
+  <p>
+  <%= form_for :task, url: tasks_path do |f| %>
+  <%=   f.hidden_field(:input, value: File.read('examples/bash-basic.json')) %>
+  <%=   f.submit 'Load', class: 'btn btn-primary btn-md' %>
+  <% end %>
+  </p>
+</div>
