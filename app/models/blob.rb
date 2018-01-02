@@ -16,8 +16,22 @@ class Blob < ApplicationRecord
       yield(f,size)
     end
   end
+ 
+  def self.retrieve_lines(taskid, name)
+    ll = Array.new
+    Blob.retrieve(taskid, name) do |f|
+      f.each_line do |l|
+        ll.push l
+      end
+    end
+    ll
+  end
 
   def self.store(taskid, name)
+    if name.nil?
+      yield(nil)
+      return
+    end
     ext = name[-4..-1]
     ext ||= ''
     ext.downcase!

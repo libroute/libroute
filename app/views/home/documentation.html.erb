@@ -22,7 +22,7 @@
 <p>The input definition file consists of the following sections<p>
 <ul>
 <li>version</li>
-This field must be set to 0.1.1 for this version of the definition file
+This field must be set to 0.1.2 for this version of the definition file
 <li>images</li>
 An array of images with each entry a hashmap with the following fields:
   <ul>
@@ -39,8 +39,10 @@ An hashmap of filenames and contents where the file contents is provided as an a
 An array of hash maps with the following fields:
   <ul>
     <li><b>image</b> - the name of the image as specificed in the images section</li>
-    <li><b>inputs</b> - a hashmap of input files, mapping input filename to container container filename</li>
+    <li><b>inputs</b> - a hashmap of input files, mapping input filename to container filename</li>
     <li><b>outputs</b> - a hashmap of output files, mapping docker container filename to output filename</li>
+    <li><b>multi-input</b> - a hashmap of an input file to container filename, each line of the file is passed to a separate activity</li>
+    <li><b>multi-output</b> -  hashmap of an output filename to output file which combines the results of all of the activites (required if multi-input is specified)</li>
     <li><b>cmd</b> (optional) - an array of the command arguments</li>
   </ul>
 </ul>

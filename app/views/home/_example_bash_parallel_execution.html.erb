@@ -1,0 +1,18 @@
+<div class="container">
+  <hr>
+  <h3>Example - <small class="text-muted">Running a script using parallel execution</small></h3>
+  <br><h5>Run a script using libroute for parallel execution</h5>
+  <br><p>This example introduces libroute concepts of parallel execution. An activity can be run in parallel by specifying a data file for which each row is passed to a different instance. The results are then re-combined and merged into the one output. This example uses the following steps:</p>
+  <ul>
+  <li>Create a file containing multiple lines</li>
+  <li>Run each line of the file separately, computing the SHA-256 hash of that line</li>
+  <li>Re-combine the results into the one output file</li>
+  </ul>
+  <p>This is a simple example but illustrates the concept of parallel execution.</p>
+  <p>
+  <%= form_for :task, url: tasks_path do |f| %>
+  <%=   f.hidden_field(:input, value: File.read('examples/bash-parallel-execution.json')) %>
+  <%=   f.submit 'Load', class: 'btn btn-primary btn-md' %>
+  <% end %>
+  </p>
+</div>

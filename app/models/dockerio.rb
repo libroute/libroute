@@ -51,7 +51,6 @@ class Dockerio
         break if idx > 0
         self.copy_stream(tar_io, contents_io)
         tar_io.close
-        contents_io.close
       end
     end
 

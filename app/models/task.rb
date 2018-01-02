@@ -136,71 +136,106 @@ class Task < ApplicationRecord
       image = data['images'].select{|im| im['name'].eql?(act['image'])}.first
       id = image['id']
 
-      # Create container
-      puts "Creating #{image['name']}"
-      if act['cmd'].nil?
-	c = Docker::Container.create('Image'=>id, 'Tty'=>false)
+      # Split if multi-input
+      if act['multi-input'].nil?
+        multi_out_filename = nil
+        acts = [act]
       else
-	c = Docker::Container.create('Image'=>id, 'Tty'=>false, 'Cmd'=>act['cmd'])
-      end
-
-      # Send inputs
-      if !act['inputs'].nil?
-        act['inputs'].each do |k,v|
-          puts "#{k}:#{v}"
-          Blob.retrieve(self.id, k) do |io,size|
-            Dockerio.store_file(c, v, io, size)
-          end
+        lines = Blob.retrieve_lines(self.id, act['multi-input'].keys[0])
+        puts "Parallel input: #{lines.count} activities"
+        acts = Array.new
+        lines.each do |l|
+          act_new = act.dup
+          act_new['multi-input-text'] = {l.strip => act['multi-input'].values[0]}
+          acts.push act_new
         end
+        multi_out_filename = act['multi-output'].values[0]
       end
 
-      # Setup run thread
-      puts "Starting #{image['name']}"
-      t1 = Thread.new do
-        Blob.store(self.id, "log/#{image['name']}.txt") do |io|
-           c.tap(&:start).attach(:stream => true, :stdin => nil, :stdout => true, :stderr => true, :logs => true, :tty => false) do |stream, chunk|
-            io.write(chunk)
-            puts "#{chunk}"
-          end
-        end
-      end
+      # Run each activity
+      Blob.store(self.id,multi_out_filename) do |multi_out_io|
+        acts.each_with_index do |act, idx|
 
-      # Setup monitor thread
-      t2 = Thread.new do
-        while true
-          state = Docker::Container.all(all: true, filters: { id: [c.id] }.to_json).first.info['State'].eql?('exited')
-          if state == true
-            puts "Detected container exit... waiting"
-            sleep 1
-            puts "Force complete"
-            t1.kill
-            Thread.exit
-          end
-        end
-      end
+	  # Create container
+	  puts "Creating #{image['name']} (#{idx})"
+	  if act['cmd'].nil?
+	    c = Docker::Container.create('Image'=>id, 'Tty'=>false)
+	  else
+	    c = Docker::Container.create('Image'=>id, 'Tty'=>false, 'Cmd'=>act['cmd'])
+	  end
 
-      # Wait until run thread complete
-      t1.join
+	  # Send inputs
+	  if !act['inputs'].nil?
+	    act['inputs'].each do |k,v|
+	      puts "#{k}:#{v}"
+	      Blob.retrieve(self.id, k) do |io,size|
+		Dockerio.store_file(c, v, io, size)
+	      end
+	    end
+	  end
 
-      # Ensure monitor is killed
-      t2.kill
+	  # Send multi-input
+	  if !act['multi-input-text'].nil?
+	    act['multi-input-text'].each do |k,v|
+	      puts "VALUE #{k}:#{v}"
+	      Dockerio.store_file(c, v, StringIO.new(k), k.length)
+	    end
+	  end
 
-      # Retrieve outputs
-      puts "Retrieving outputs from #{image['name']}"
-      if !act['outputs'].nil?
-        act['outputs'].each do |k,v|
-        puts "#{k}:#{v}"
-          Blob.store(self.id,v) do |io|
-            Dockerio.retrieve_file_advanced(c, k, io)
-          end
-        end
-      end
+	  # Setup run thread
+	  puts "Starting #{image['name']}"
+	  t1 = Thread.new do
+	    Blob.store(self.id, "log/#{image['name']}.txt") do |io|
+	       c.tap(&:start).attach(:stream => true, :stdin => nil, :stdout => true, :stderr => true, :logs => true, :tty => false) do |stream, chunk|
+		io.write(chunk)
+		puts "#{chunk}"
+	      end
+	    end
+	  end
 
-      # Cleanup
-      puts "Cleaning up #{image['name']}"
-      c.delete(:force=>true)
+	  # Setup monitor thread
+	  t2 = Thread.new do
+	    while true
+	      state = Docker::Container.all(all: true, filters: { id: [c.id] }.to_json).first.info['State'].eql?('exited')
+	      if state == true
+		puts "Detected container exit... waiting"
+		sleep 1
+		puts "Force complete"
+		t1.kill
+		Thread.exit
+	      end
+	    end
+	  end
+
+	  # Wait until run thread complete
+	  t1.join
+
+	  # Ensure monitor is killed
+	  t2.kill
+
+	  # Retrieve outputs
+	  puts "Retrieving outputs from #{image['name']}"
+	  if !act['outputs'].nil?
+	    act['outputs'].each do |k,v|
+	    puts "#{k}:#{v}"
+	      Blob.store(self.id,v) do |io|
+		Dockerio.retrieve_file_advanced(c, k, io)
+	      end
+	    end
+	  end
+
+	  # Multi-output
+	  if !act['multi-output'].nil?
+	    Dockerio.retrieve_file_advanced(c, act['multi-output'].keys[0], multi_out_io)
+	  end
+
+	  # Cleanup
+	  puts "Cleaning up #{image['name']}"
+	  c.delete(:force=>true)
       
-    end
+        end # multi-activity
+      end # multi-out
+    end # base activity
 
   return true
 
@@ -222,7 +257,6 @@ class Task < ApplicationRecord
     (0..2).each do |ind|
       v_i = v[ind] || 0
       s_i = s[ind] || 0
-      puts "comparing #{v_i} to #{s_i}"
       if v_i > s_i then return false end
       if v_i < s_i then return true end
     end

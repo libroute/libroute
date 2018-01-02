@@ -1,0 +1,20 @@
+{ "version" : "0.1.2",
+  "images" : [
+  {   "name" : "bash-basic-example",
+      "source" : "dockerfile",
+      "contents" : ["FROM centos:7"] }
+  ],
+ "preload" : [
+ {  "script.sh" : [ "echo \"line 1\nline 2\nline 3\" > data.txt" ] }
+  ],
+ "activities" : [
+   { "image" : "bash-basic-example",
+     "inputs" : {"script.sh" : "/script.sh"},
+     "outputs" : {"/data.txt" : "data.txt" },
+    "cmd" : ["bash","-c","/script.sh"] },
+    { "image" : "bash-basic-example",
+     "multi-input" : {"data.txt" : "/data.txt"},
+     "multi-output" : {"/hash.txt" : "hash.txt"},
+    "cmd" : ["bash","-c","sha256sum data.txt | tee /hash.txt"] }
+  ]
+}
