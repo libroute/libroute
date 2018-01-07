@@ -18,7 +18,7 @@ class Task < ApplicationRecord
         self.status = :success
       else
         self.status = :error
-        Blob.store(self.id, "log/error.txt") do |io|
+        Blob.store("log/error.txt", self.id) do |io|
           puts "#{result}"
           io.write "#{result}"
         end
@@ -89,40 +89,41 @@ class Task < ApplicationRecord
 
     # Build containers
     data['images'].map! do |im|
-      if im['source'].eql?('github')
-        url = "https://github.com/#{im['user']}/#{im['repo']}.git"
-        buildfn = Proc.new{|logfn| Docker::Image.build_from_tar(StringIO.new, {'remote'=>url}, &logfn)}
-      elsif im['source'].eql?('local')
-        localdir = Rails.root + 'repos' + im['dir']
-        buildfn = Proc.new{|logfn| Docker::Image.build_from_dir(localdir.to_s, &logfn)}
-      elsif im['source'].eql?('dockerfile')
-        buildfn = Proc.new{|logfn| Docker::Image.build(im['contents'].join("\n"), &logfn)}
-      else
-        return "Invalid source"
-      end
+      im_out = build_container(im)
+      return nil if im_out.nil?
+      im_out
+    end
 
-      image = nil
-      Blob.store(self.id, "log/#{im['name']}.build.txt") do |io|
-        logfn = Proc.new do |v|
-          if (log = JSON.parse(v)) && log.has_key?("stream")
-            io.write(log["stream"])
-            puts log["stream"]
+    # Download stores
+    if !data['stores'].nil?
+      data['stores'].each do |k,v|
+        puts "Store #{k}:#{v}"
+        if Blob.exist?(v)
+          puts " -> using cache"
+          next
+        end
+        uri = URI(v)
+        Net::HTTP.start(uri.host, uri.port) do |http|
+          request = Net::HTTP::Get.new uri.request_uri
+          http.request request do |response|
+            Blob.store(v) do |f|
+              response.read_body do |chunk|
+                f.write chunk
+              end
+            end
           end
         end
-        image = buildfn.call(logfn)
       end
-
-      im['id'] = image.id
-      im
     end
 
     # Preload data
-    data['preload'].each do |pre|
-      pre.each do |filename,val|
-        puts "Storing task id #{self.id} with filename #{filename}"
-        Blob.store(self.id, filename){|f| f.write(val.join("\n"))}
-        puts "Done"
-	#File.open(Rails.root + 'output' + self.id.to_s + filename,'wb'){|f| f.write(val.join("\n"))}
+    if !data['preload'].nil?
+      data['preload'].each do |pre|
+        pre.each do |filename,val|
+          puts "Storing task id #{self.id} with filename #{filename}"
+          Blob.store(filename, self.id){|f| f.write(val.join("\n"))}
+          puts "Done"
+        end
       end
     end
 
@@ -141,7 +142,7 @@ class Task < ApplicationRecord
         multi_out_filename = nil
         acts = [act]
       else
-        lines = Blob.retrieve_lines(self.id, act['multi-input'].keys[0])
+        lines = Blob.retrieve_lines(act['multi-input'].keys[0], self.id)
         puts "Parallel input: #{lines.count} activities"
         acts = Array.new
         lines.each do |l|
@@ -153,7 +154,7 @@ class Task < ApplicationRecord
       end
 
       # Run each activity
-      Blob.store(self.id,multi_out_filename) do |multi_out_io|
+      Blob.store(multi_out_filename, self.id) do |multi_out_io|
         acts.each_with_index do |act, idx|
 
 	  # Create container
@@ -168,11 +169,23 @@ class Task < ApplicationRecord
 	  if !act['inputs'].nil?
 	    act['inputs'].each do |k,v|
 	      puts "#{k}:#{v}"
-	      Blob.retrieve(self.id, k) do |io,size|
+	      Blob.retrieve(k, self.id) do |io,size|
 		Dockerio.store_file(c, v, io, size)
 	      end
 	    end
 	  end
+
+          # Send store-inputs
+          if !act['store-inputs'].nil?
+            act['store-inputs'].each do |ref,fn|
+              bn = data['stores'][ref]
+              return "Store #{ref} not found" if bn.nil?
+              puts "#{ref} (#{bn}):#{fn}"
+              Blob.retrieve(bn) do |io,size|
+                Dockerio.store_file(c, fn, io, size)
+              end
+            end
+          end
 
 	  # Send multi-input
 	  if !act['multi-input-text'].nil?
@@ -185,10 +198,18 @@ class Task < ApplicationRecord
 	  # Setup run thread
 	  puts "Starting #{image['name']}"
 	  t1 = Thread.new do
-	    Blob.store(self.id, "log/#{image['name']}.txt") do |io|
-	       c.tap(&:start).attach(:stream => true, :stdin => nil, :stdout => true, :stderr => true, :logs => true, :tty => false) do |stream, chunk|
-		io.write(chunk)
-		puts "#{chunk}"
+	    Blob.store("log/#{image['name']}.stdout.txt", self.id) do |io|
+              Blob.store("log/#{image['name']}.stderr.txt", self.id) do |io_err|
+	        c.tap(&:start).attach(:stream => true, :stdin => nil, :stdout => true, :stderr => true, :logs => true, :tty => false) do |stream, chunk|
+		  if stream==:stdout
+                    io.write(chunk)
+                    io.flush
+                  else
+                    io_err.write(chunk)
+                    io_err.flush
+                  end
+		  puts "#{chunk}"
+                end
 	      end
 	    end
 	  end
@@ -218,7 +239,7 @@ class Task < ApplicationRecord
 	  if !act['outputs'].nil?
 	    act['outputs'].each do |k,v|
 	    puts "#{k}:#{v}"
-	      Blob.store(self.id,v) do |io|
+	      Blob.store(v, self.id) do |io|
 		Dockerio.retrieve_file_advanced(c, k, io)
 	      end
 	    end
@@ -239,6 +260,36 @@ class Task < ApplicationRecord
 
   return true
 
+  end
+
+  def build_container(im)
+      if im['source'].eql?('github')
+        url = "https://github.com/#{im['user']}/#{im['repo']}.git"
+        puts "Using #{url}"
+        buildfn = Proc.new{|logfn| Docker::Image.build_from_tar(StringIO.new, {'remote'=>url}, &logfn)}
+      elsif im['source'].eql?('local')
+        localdir = Rails.root + 'repos' + im['dir']
+        buildfn = Proc.new{|logfn| Docker::Image.build_from_dir(localdir.to_s, &logfn)}
+      elsif im['source'].eql?('dockerfile')
+        buildfn = Proc.new{|logfn| Docker::Image.build(im['contents'].join("\n"), &logfn)}
+      else
+        return nil
+      end
+
+      image = nil
+      Blob.store("log/#{im['name']}.build.txt", self.id) do |io|
+        logfn = Proc.new do |v|
+          if (log = JSON.parse(v)) && log.has_key?("stream")
+            io.write(log["stream"])
+            io.flush
+            puts log["stream"]
+          end
+        end
+        image = buildfn.call(logfn)
+      end
+
+      im['id'] = image.id
+      im
   end
 
   def erase_data

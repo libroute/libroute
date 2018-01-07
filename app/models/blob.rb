@@ -1,5 +1,5 @@
 class Blob < ApplicationRecord
-  belongs_to :task
+  belongs_to :task, required: false
 
   EXTS = ['.txt','.png']
 
@@ -7,7 +7,11 @@ class Blob < ApplicationRecord
     self.uid = SecureRandom.hex
   end
 
-  def self.retrieve(taskid, name)
+  def self.exist?(name, taskid=0)
+    !Blob.where(task_id: taskid, name: name).first.nil?
+  end
+
+  def self.retrieve(name, taskid=0)
     d = basedir(taskid)
     b = Blob.where(task_id: taskid, name: name).last
     return nil if b.nil?
@@ -17,7 +21,7 @@ class Blob < ApplicationRecord
     end
   end
  
-  def self.retrieve_lines(taskid, name)
+  def self.retrieve_lines(name, taskid=0)
     ll = Array.new
     Blob.retrieve(taskid, name) do |f|
       f.each_line do |l|
@@ -27,7 +31,7 @@ class Blob < ApplicationRecord
     ll
   end
 
-  def self.store(taskid, name)
+  def self.store(name, taskid=0)
     if name.nil?
       yield(nil)
       return
@@ -49,7 +53,7 @@ class Blob < ApplicationRecord
     end
   end
 
-  def self.erase(taskid)
+  def self.erase(taskid=0)
     FileUtils.rm_rf(basedir(taskid))
   end
 
